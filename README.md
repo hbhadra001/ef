@@ -79,4 +79,28 @@ The manual gate dramatically reduces incidents and accelerates customer time-to-
 
 To protect the stability of our enterprise file-transfer platform, any customer request to deploy flows directly to Production will require a **manual verification**. This check confirms that the flow was successfully deployed and tested in Dev and Test, and that the customer has provided formal sign-off. The process ensures compliance, reduces operational risk, and safeguards mission-critical data movements across the organization.
 
+Here’s a polished **Teams message** you can send directly to your Product team:
+
+---
+
+**Hi Team,**
+
+I’ve drafted the explanation and created a polished approval-workflow diagram for the **Production deployment gate** in the Self-Serve UI. This needs to be added to our Product documentation and included in the next presentation.
+
+Please incorporate the attached diagram into the **Deployment Governance / Promotion Workflow** section and highlight the following key point:
+
+> **Any customer request to deploy directly into Prod will require a mandatory manual approval step.**
+> This ensures the flow has been successfully deployed, tested, and customer-validated in Dev and Test before anything is provisioned in Production.
+
+This messaging is intended for VP-level communication and aligns with our platform governance and risk-control framework.
+
+Let me know if you need a PPT version, Confluence-ready text, or additional visuals.
+
+Thanks!
+
+---
+
+If you want it shorter, more formal, or tailored to a specific Product Manager, I can adjust it.
+
+
 
