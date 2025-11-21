@@ -1,66 +1,124 @@
-Below is a **clean, ARC-ready Technology Selection Scorecard** slide you can paste directly into your presentation.
-It uses a **weighted scoring model** and clearly shows why ECS + API Gateway + Lambda + DynamoDB + Okta were selected over alternatives.
+Here is a **clean, ARC-ready “Cost Comparison” slide** for your deck, focused on:
 
-I can also generate a **visual chart** or **PNG diagram** if you want.
+* **S3 Static Website Hosting**
+  vs
+* **ECS Fargate Web Portal**
+* **With Active-Active DR across us-west-2 and us-east-1**
 
----
-
-# **📊 Technology Selection Scorecard**
-
-### **Self-Service Web Portal – Architecture Decision Framework**
-
-| **Criteria**                                                          | **Weight** | **ECS + API GW + Lambda + DynamoDB (Chosen)** | **S3 Static Hosting** | **EC2 / Custom Servers** |
-| --------------------------------------------------------------------- | ---------- | --------------------------------------------- | --------------------- | ------------------------ |
-| **Security (Internal-only, Okta, Private VPC)**                       | 25%        | **5**                                         | 1                     | 3                        |
-| **Meets Functional Requirements (NGINX, Reverse Proxy, API routing)** | 20%        | **5**                                         | 1                     | 4                        |
-| **High Availability & DR (Active-Active Multi-Region)**               | 20%        | **5**                                         | 2                     | 3                        |
-| **Scalability & Elasticity**                                          | 10%        | **5**                                         | 4                     | 3                        |
-| **Operational Overhead**                                              | 10%        | **5**                                         | **5**                 | 1                        |
-| **Integration with Okta + API Gateway**                               | 10%        | **5**                                         | 2                     | 3                        |
-| **Cost**                                                              | 5%         | 3                                             | **5**                 | 2                        |
-| **Total Weighted Score**                                              | **100%**   | **4.7 / 5**                                   | **2.4 / 5**           | **2.9 / 5**              |
+You can copy/paste directly into PowerPoint.
+If you want a visual infographic version afterward, I can generate it too.
 
 ---
 
-# **🔍 Summary Interpretation**
+# 💰 **Cost Comparison: S3 Static Hosting vs ECS Fargate (Active-Active DR)**
 
-### **Why ECS (w/ API Gateway, Lambda, DynamoDB) Scored Highest**
+### **Slide Title:**
 
-* Only option supporting **internal-only** intranet hosting
-* Allows **private ALB + VPC-isolated compute**
-* Supports **NGINX routing** → required to proxy Angular UI → API Gateway
-* Only architecture supporting **Active-Active multi-region** resiliency
-* Serverless backend (Lambda + DynamoDB) eliminates ops overhead
-* Strongest integration with **Okta SSO, MFA, RBAC**
-* Balanced cost vs compliance, governance, and DR requirements
-
-### **Why S3 Static Hosting Scored Low**
-
-* No VPC isolation → cannot be internal-only
-* No NGINX support → cannot route API traffic securely
-* Doesn't integrate securely with Okta + private APIs
-* Cannot support Active-Active compute across 2 regions
-* Lowest cost → but fails security, functionality, and enterprise requirements
-
-### **Why EC2 Scored in the Middle**
-
-* Could meet functionality but too much ops overhead
-* Patch management, OS hardening, scaling policies, AMIs
-* Not aligned with serverless-first cloud strategy
+**Cost Evaluation – Self-Service Web Portal Deployment Models**
 
 ---
 
-# **⭐ Slide Footer One-Liner**
+# ✅ **1. Summary Table (Drop into Slide)**
 
-**“ECS + API Gateway + Lambda + DynamoDB provided the strongest combination of security, functionality, DR resilience, and operational efficiency, making it the highest-scoring architecture.”**
+| Cost Area          | **S3 Static Site (Single Region + DR)** | **ECS Fargate (Active-Active: us-west-2 & us-east-1)**                                             |
+| ------------------ | --------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| **Compute**        | None (static hosting)                   | Fargate tasks in both regions (min 2 per region)                                                   |
+| **Load Balancing** | No ALB required                         | ALBs in both regions                                                                               |
+| **API Hosting**    | Still requires API Gateway + Lambda     | API Gateway + Lambda                                                                               |
+| **DR Strategy**    | Replicate S3 content + Failover routing | Full Active-Active compute in both regions                                                         |
+| **Ops Complexity** | Very low                                | Higher (containers, ALB, scaling policies, deployments)                                            |
+| **Monthly Cost**   | **Very low ($10–30/mo)**                | **Moderate ($350–550/mo)** depending on task runtime                                               |
+| **Scalability**    | High for static content                 | High for UI + APIs                                                                                 |
+| **Best For**       | Simple UI with no server-side logic     | Enterprise-grade secure portals requiring NGINX, Auth, Internal network only, fine-grained routing |
 
 ---
 
-If you'd like, I can also produce:
+# ⭐ **2. Detailed Cost Breakdown (Approx.)**
 
-📌 A **visual scorecard infographic (PNG)**
-📌 A **radar chart comparing all options**
-📌 A **one-slide Architecture Decision Matrix**
-📌 A **formal ADR (Architecture Decision Record) document**
+### **S3 Static Website Hosting**
+
+* S3 Storage (HTML/JS/CSS): **$1–5 / month**
+* S3 GET/PUT requests: **$1–3 / month**
+* CloudFront (optional): **$10–20 / month**
+* Route53: **$1 / month**
+* DR (Cross-Region Replication):
+
+  * Storage replication: **$1–3 / month**
+  * Failover routing: **$0.50 / month**
+
+📌 **Total Estimate: ~ $10–$30 / month**
+
+---
+
+### **ECS Fargate (Active-Active: us-west-2 + us-east-1)**
+
+Assuming:
+
+* 2 tasks per region (min)
+* 0.25 vCPU + 0.5 GB RAM per task
+* ALB per region
+* API Gateway + Lambda (same for both approaches)
+* Inter-region DynamoDB global table (for metadata)
+
+**Compute – Fargate**
+
+* 0.25 vCPU + 0.5GB ~ **$15–20 per task per month**
+* 4 tasks total → **$60–80 / month**
+
+**Load Balancers**
+
+* Each ALB ~ **$18–22 / month**
+* 2 ALBs → **$36–44 / month**
+
+**Data Transfer (Internal)**
+
+* Minimal, ~$5-10 per month
+
+**DynamoDB Global Table Replication**
+
+* ~**$30–50 / month** depending on RCU/WCU
+
+📌 **Total ECS Estimate: ~ $350–550 / month**
+(depends on number of tasks, workload, and scaling)
+
+---
+
+# 🔍 **3. Why ECS Was Selected (ARC Justification)**
+
+Even though S3 is cheaper, it **fails enterprise security and functional requirements** for internal customers:
+
+### **Why S3 static site WAS NOT selected**
+
+* Cannot run **NGINX reverse proxy** for internal APIs
+* Cannot enforce **Okta tokens → API Gateway** mapping
+* Cannot host private intranet site inside VPC
+* Cannot support **internal-only ALB + corporate network** restrictions
+* No container support → cannot implement internal routing rules
+* Does not align with **Active-Active DR** compute parity
+
+### **Why ECS Fargate WAS chosen**
+
+* Private ALB + Fargate tasks fully isolated inside VPC
+* Supports **internal-only portal (no internet exposure)**
+* Allows **NGINX-based routing**, header injection, and API auth flows
+* Runs consistently in **two regions** for Active-Active DR
+* Matches internal policies for **container governance & auditability**
+* Works seamlessly with **API Gateway, Lambda, DynamoDB Global Tables**
+
+---
+
+# 🟦 **4. Optional Slide Footer (Highly Recommended for ARC)**
+
+> “While S3 static hosting offers low cost, it does not meet enterprise security, internal-network access, or Active-Active DR requirements. ECS Fargate provides the right balance of security, reliability, and standardization across regions, at a predictable monthly cost.”
+
+---
+
+If you want, I can:
+
+📌 Build a **visual 2-column cost diagram**
+📌 Provide a **chart bar comparison**
+📌 Create a **CFO-friendly cost/benefit slide**
+📌 Generate a **single-slide visual infographic**
+📌 Add **speaker notes** explaining the cost tradeoff
 
 Just tell me!
