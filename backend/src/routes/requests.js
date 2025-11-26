@@ -6,6 +6,52 @@ const { validate, requestSchemas } = require('../middleware/validation');
 
 const router = express.Router();
 
+// Demo endpoint to get requests without auth
+router.get('/demo', async (req, res) => {
+  try {
+    // Return mock requests for demo
+    const mockRequests = [
+      {
+        id: 'REQ-DEMO1',
+        requestId: 'REQ-DEMO1',
+        serviceType: 'aws-ec2',
+        title: 'Development Environment Setup',
+        description: 'Need EC2 instances for development team',
+        priority: 'medium',
+        environment: 'development',
+        status: 'pending',
+        submittedAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+        contactEmail: 'dev@company.com',
+        department: 'Engineering'
+      },
+      {
+        id: 'REQ-DEMO2',
+        requestId: 'REQ-DEMO2',
+        serviceType: 'aws-s3',
+        title: 'Data Backup Storage',
+        description: 'S3 bucket for automated backups',
+        priority: 'high',
+        environment: 'production',
+        status: 'approved',
+        submittedAt: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
+        contactEmail: 'ops@company.com',
+        department: 'Operations'
+      }
+    ];
+
+    res.json({
+      requests: mockRequests,
+      total: mockRequests.length
+    });
+  } catch (error) {
+    console.error('Get demo requests error:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to fetch requests'
+    });
+  }
+});
+
 // Get user's requests
 router.get('/my', authenticateToken, async (req, res) => {
   try {
@@ -41,25 +87,42 @@ router.get('/my/stats', authenticateToken, async (req, res) => {
   }
 });
 
-// Get all requests (manager/admin only)
-router.get('/', authenticateToken, requireManager, async (req, res) => {
+// Get all requests (demo version without auth)
+router.get('/', async (req, res) => {
   try {
-    const { status, limit = 50, lastKey } = req.query;
-    
-    let requests;
-    if (status) {
-      requests = await ServiceRequest.findByStatus(status);
-    } else {
-      const result = await ServiceRequest.findAll(parseInt(limit), lastKey);
-      requests = result.items;
-    }
-    
-    // Sort by submission date (newest first)
-    requests.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+    // Return mock requests for demo
+    const mockRequests = [
+      {
+        id: 'REQ-DEMO1',
+        requestId: 'REQ-DEMO1',
+        serviceType: 'aws-ec2',
+        title: 'Development Environment Setup',
+        description: 'Need EC2 instances for development team',
+        priority: 'medium',
+        environment: 'development',
+        status: 'pending',
+        submittedAt: new Date(Date.now() - 86400000).toISOString(),
+        contactEmail: 'dev@company.com',
+        department: 'Engineering'
+      },
+      {
+        id: 'REQ-DEMO2',
+        requestId: 'REQ-DEMO2',
+        serviceType: 'aws-s3',
+        title: 'Data Backup Storage',
+        description: 'S3 bucket for automated backups',
+        priority: 'high',
+        environment: 'production',
+        status: 'approved',
+        submittedAt: new Date(Date.now() - 172800000).toISOString(),
+        contactEmail: 'ops@company.com',
+        department: 'Operations'
+      }
+    ];
     
     res.json({
-      requests,
-      total: requests.length
+      requests: mockRequests,
+      total: mockRequests.length
     });
   } catch (error) {
     console.error('Get all requests error:', error);
@@ -115,40 +178,70 @@ router.get('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Create new service request
-router.post('/', authenticateToken, validate(requestSchemas.create), async (req, res) => {
+// Create new service request (demo version without auth)
+router.post('/', async (req, res) => {
   try {
-    const { serviceId, serviceName, description, formData, priority } = req.body;
+    console.log('Received request data:', req.body);
     
-    // Verify service exists and is active
-    const service = await Service.findById(serviceId);
-    if (!service || !service.isActive) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: 'Service not found or inactive'
-      });
-    }
-
-    const requestData = {
-      userId: req.user.id,
-      serviceId,
-      serviceName: serviceName || service.name,
+    // Extract data from the form submission
+    const {
+      serviceType,
+      title,
       description,
-      formData,
-      priority
+      priority,
+      environment,
+      businessJustification,
+      estimatedUsers,
+      budget,
+      requiredBy,
+      technicalRequirements,
+      complianceRequirements,
+      contactEmail,
+      department,
+      requestId
+    } = req.body;
+
+    // Generate a unique request ID if not provided
+    const generatedRequestId = requestId || 'REQ-' + Date.now().toString(36).toUpperCase();
+
+    // Create mock request data for demo
+    const requestData = {
+      id: generatedRequestId,
+      requestId: generatedRequestId,
+      serviceType,
+      title,
+      description,
+      priority: priority || 'medium',
+      environment: environment || 'development',
+      businessJustification,
+      estimatedUsers: parseInt(estimatedUsers) || 1,
+      budget: parseFloat(budget) || 0,
+      requiredBy,
+      technicalRequirements,
+      complianceRequirements,
+      contactEmail,
+      department,
+      status: 'pending',
+      submittedAt: new Date().toISOString(),
+      userId: 'demo-user',
+      userName: 'Demo User'
     };
 
-    const request = await ServiceRequest.create(requestData);
+    // For demo purposes, just return success without actually storing
+    console.log('Created request:', requestData);
     
     res.status(201).json({
-      message: 'Service request created successfully',
-      request
+      message: 'Service request submitted successfully!',
+      requestId: generatedRequestId,
+      request: requestData,
+      success: true
     });
   } catch (error) {
     console.error('Create request error:', error);
     res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to create request'
+      message: 'Failed to create request',
+      success: false
     });
   }
 });
