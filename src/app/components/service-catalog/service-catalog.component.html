@@ -1,1 +1,249 @@
-<p>service-catalog works!</p>
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <!-- Header -->
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h2 class="mb-1">
+            <i class="bi bi-grid-3x3-gap me-2 text-primary"></i>
+            Service Catalog
+          </h2>
+          <p class="text-muted mb-0">Browse and request cloud services and infrastructure resources</p>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-primary" (click)="loadServices()">
+            <i class="bi bi-arrow-clockwise me-1"></i>
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <div class="row align-items-center">
+            <!-- Search -->
+            <div class="col-md-6 mb-3 mb-md-0">
+              <div class="input-group">
+                <span class="input-group-text">
+                  <i class="bi bi-search"></i>
+                </span>
+                <input type="text" 
+                       class="form-control" 
+                       placeholder="Search services, providers, or descriptions..."
+                       [value]="searchTerm"
+                       (input)="onSearchChange($event)">
+              </div>
+            </div>
+
+            <!-- Category Filter -->
+            <div class="col-md-6">
+              <div class="d-flex flex-wrap gap-2">
+                <button *ngFor="let category of categories"
+                        class="btn btn-sm"
+                        [class.btn-primary]="selectedCategory === category"
+                        [class.btn-outline-secondary]="selectedCategory !== category"
+                        (click)="onCategoryChange(category)">
+                  <i class="bi" [ngClass]="getCategoryIcon(category)" *ngIf="category !== 'All'"></i>
+                  <i class="bi bi-collection" *ngIf="category === 'All'"></i>
+                  <span class="ms-1">{{ category }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div *ngIf="isLoading" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-3 text-muted">Loading services...</p>
+      </div>
+
+      <!-- Services Grid -->
+      <div *ngIf="!isLoading" class="row">
+        <!-- No Results -->
+        <div *ngIf="filteredServices.length === 0" class="col-12">
+          <div class="card border-warning">
+            <div class="card-body text-center py-5">
+              <i class="bi bi-search display-1 text-warning mb-3"></i>
+              <h4>No Services Found</h4>
+              <p class="text-muted">Try adjusting your search criteria or category filter.</p>
+              <button class="btn btn-outline-primary" (click)="selectedCategory = 'All'; searchTerm = ''; filterServices()">
+                <i class="bi bi-arrow-clockwise me-1"></i>
+                Clear Filters
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Service Cards -->
+        <div *ngFor="let service of filteredServices" class="col-lg-4 col-md-6 mb-4">
+          <div class="card h-100 service-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <div class="d-flex align-items-center">
+                <i class="bi me-2 text-primary" [ngClass]="getProviderIcon(service.provider)"></i>
+                <span class="fw-bold">{{ service.provider }}</span>
+              </div>
+              <span class="badge" [ngClass]="getStatusBadgeClass(service.status)">
+                {{ service.status }}
+              </span>
+            </div>
+            
+            <div class="card-body d-flex flex-column">
+              <div class="d-flex align-items-start mb-3">
+                <i class="bi me-2 text-secondary" [ngClass]="getCategoryIcon(service.category)"></i>
+                <div class="flex-grow-1">
+                  <h5 class="card-title mb-1">{{ service.name }}</h5>
+                  <small class="text-muted">{{ service.category }}</small>
+                </div>
+              </div>
+              
+              <p class="card-text flex-grow-1">{{ service.description }}</p>
+              
+              <div class="mt-auto">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <div class="pricing">
+                    <small class="text-muted">Pricing</small>
+                    <div class="fw-bold text-success">{{ service.pricing }}</div>
+                  </div>
+                </div>
+                
+                <div class="d-grid gap-2">
+                  <button class="btn btn-primary" 
+                          [routerLink]="['/request', service.id]"
+                          [disabled]="service.status !== 'Available'">
+                    <i class="bi bi-plus-circle me-1"></i>
+                    Request Service
+                  </button>
+                  <button class="btn btn-outline-secondary btn-sm" 
+                          data-bs-toggle="modal" 
+                          [attr.data-bs-target]="'#serviceModal' + service.id">
+                    <i class="bi bi-info-circle me-1"></i>
+                    View Details
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Service Count -->
+      <div *ngIf="!isLoading && filteredServices.length > 0" class="mt-4">
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle me-2"></i>
+          Showing <strong>{{ filteredServices.length }}</strong> of <strong>{{ services.length }}</strong> services
+          <span *ngIf="selectedCategory !== 'All'"> in <strong>{{ selectedCategory }}</strong> category</span>
+          <span *ngIf="searchTerm"> matching "<strong>{{ searchTerm }}</strong>"</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Service Detail Modals -->
+<div *ngFor="let service of services" 
+     class="modal fade" 
+     [id]="'serviceModal' + service.id" 
+     tabindex="-1" 
+     [attr.aria-labelledby]="'serviceModalLabel' + service.id" 
+     aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" [id]="'serviceModalLabel' + service.id">
+          <i class="bi me-2" [ngClass]="getProviderIcon(service.provider)"></i>
+          {{ service.name }}
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-md-8">
+            <h6>Description</h6>
+            <p>{{ service.description }}</p>
+            
+            <h6>Features</h6>
+            <ul class="list-unstyled">
+              <li *ngIf="service.category === 'Compute'">
+                <i class="bi bi-check-circle text-success me-2"></i>
+                Scalable virtual machines
+              </li>
+              <li *ngIf="service.category === 'Compute'">
+                <i class="bi bi-check-circle text-success me-2"></i>
+                Multiple instance types available
+              </li>
+              <li *ngIf="service.category === 'Storage'">
+                <i class="bi bi-check-circle text-success me-2"></i>
+                99.999999999% (11 9's) durability
+              </li>
+              <li *ngIf="service.category === 'Storage'">
+                <i class="bi bi-check-circle text-success me-2"></i>
+                Unlimited storage capacity
+              </li>
+              <li *ngIf="service.category === 'Database'">
+                <i class="bi bi-check-circle text-success me-2"></i>
+                Automated backups and patching
+              </li>
+              <li *ngIf="service.category === 'Database'">
+                <i class="bi bi-check-circle text-success me-2"></i>
+                Multi-AZ deployment options
+              </li>
+              <li>
+                <i class="bi bi-check-circle text-success me-2"></i>
+                24/7 technical support
+              </li>
+              <li>
+                <i class="bi bi-check-circle text-success me-2"></i>
+                Enterprise-grade security
+              </li>
+            </ul>
+          </div>
+          <div class="col-md-4">
+            <div class="card bg-light">
+              <div class="card-body">
+                <h6>Service Details</h6>
+                <table class="table table-sm table-borderless">
+                  <tr>
+                    <td><strong>Provider:</strong></td>
+                    <td>{{ service.provider }}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Category:</strong></td>
+                    <td>{{ service.category }}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Status:</strong></td>
+                    <td>
+                      <span class="badge" [ngClass]="getStatusBadgeClass(service.status)">
+                        {{ service.status }}
+                      </span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><strong>Pricing:</strong></td>
+                    <td class="text-success fw-bold">{{ service.pricing }}</td>
+                  </tr>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" 
+                class="btn btn-primary" 
+                [routerLink]="['/request', service.id]"
+                data-bs-dismiss="modal"
+                [disabled]="service.status !== 'Available'">
+          <i class="bi bi-plus-circle me-1"></i>
+          Request This Service
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

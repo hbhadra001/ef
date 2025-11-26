@@ -8,6 +8,7 @@ export const routes: Routes = [
   { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
   { path: 'dashboard', component: DashboardComponent },
   { path: 'services', component: ServiceCatalogComponent },
+  { path: 'request', component: RequestFormComponent },
   { path: 'request/:serviceId', component: RequestFormComponent },
   { path: 'profile', component: UserProfileComponent },
   { path: '**', redirectTo: '/dashboard' }
