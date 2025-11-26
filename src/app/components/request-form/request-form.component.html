@@ -1,1 +1,278 @@
-<p>request-form works!</p>
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+          <h4 class="mb-0">
+            <i class="bi bi-plus-circle me-2"></i>
+            Submit Service Request
+          </h4>
+          <p class="mb-0 mt-2 opacity-75">Request cloud services and infrastructure resources</p>
+        </div>
+        
+        <div class="card-body">
+          <!-- Success/Error Messages -->
+          <div *ngIf="submitMessage" class="alert" 
+               [class.alert-success]="submitSuccess" 
+               [class.alert-danger]="!submitSuccess" 
+               role="alert">
+            <i class="bi" [class.bi-check-circle]="submitSuccess" [class.bi-exclamation-triangle]="!submitSuccess"></i>
+            {{ submitMessage }}
+          </div>
+
+          <form [formGroup]="requestForm" (ngSubmit)="onSubmit()">
+            <div class="row">
+              <!-- Service Type -->
+              <div class="col-md-6 mb-3">
+                <label for="serviceType" class="form-label">
+                  <i class="bi bi-cloud me-1"></i>Service Type *
+                </label>
+                <select class="form-select" 
+                        id="serviceType" 
+                        formControlName="serviceType"
+                        [class.is-invalid]="isFieldInvalid('serviceType')">
+                  <option value="">Select a service...</option>
+                  <optgroup label="Compute">
+                    <option value="aws-ec2">AWS EC2 Instance</option>
+                    <option value="azure-vm">Azure Virtual Machine</option>
+                    <option value="gcp-compute">GCP Compute Engine</option>
+                  </optgroup>
+                  <optgroup label="Storage">
+                    <option value="aws-s3">AWS S3 Bucket</option>
+                    <option value="azure-storage">Azure Storage Account</option>
+                  </optgroup>
+                  <optgroup label="Database">
+                    <option value="aws-rds">AWS RDS Database</option>
+                  </optgroup>
+                </select>
+                <div class="invalid-feedback">{{ getFieldError('serviceType') }}</div>
+              </div>
+
+              <!-- Priority -->
+              <div class="col-md-6 mb-3">
+                <label for="priority" class="form-label">
+                  <i class="bi bi-flag me-1"></i>Priority *
+                </label>
+                <select class="form-select" 
+                        id="priority" 
+                        formControlName="priority"
+                        [class.is-invalid]="isFieldInvalid('priority')">
+                  <option *ngFor="let priority of priorities" [value]="priority.value">
+                    {{ priority.label }}
+                  </option>
+                </select>
+                <div class="invalid-feedback">{{ getFieldError('priority') }}</div>
+              </div>
+            </div>
+
+            <div class="row">
+              <!-- Title -->
+              <div class="col-md-8 mb-3">
+                <label for="title" class="form-label">
+                  <i class="bi bi-card-text me-1"></i>Request Title *
+                </label>
+                <input type="text" 
+                       class="form-control" 
+                       id="title" 
+                       formControlName="title"
+                       placeholder="Brief description of your request"
+                       [class.is-invalid]="isFieldInvalid('title')">
+                <div class="invalid-feedback">{{ getFieldError('title') }}</div>
+              </div>
+
+              <!-- Environment -->
+              <div class="col-md-4 mb-3">
+                <label for="environment" class="form-label">
+                  <i class="bi bi-gear me-1"></i>Environment *
+                </label>
+                <select class="form-select" 
+                        id="environment" 
+                        formControlName="environment"
+                        [class.is-invalid]="isFieldInvalid('environment')">
+                  <option *ngFor="let env of environments" [value]="env.value">
+                    {{ env.label }}
+                  </option>
+                </select>
+                <div class="invalid-feedback">{{ getFieldError('environment') }}</div>
+              </div>
+            </div>
+
+            <!-- Description -->
+            <div class="mb-3">
+              <label for="description" class="form-label">
+                <i class="bi bi-file-text me-1"></i>Description *
+              </label>
+              <textarea class="form-control" 
+                        id="description" 
+                        rows="4" 
+                        formControlName="description"
+                        placeholder="Detailed description of what you need and how it will be used"
+                        [class.is-invalid]="isFieldInvalid('description')"></textarea>
+              <div class="invalid-feedback">{{ getFieldError('description') }}</div>
+            </div>
+
+            <!-- Business Justification -->
+            <div class="mb-3">
+              <label for="businessJustification" class="form-label">
+                <i class="bi bi-briefcase me-1"></i>Business Justification *
+              </label>
+              <textarea class="form-control" 
+                        id="businessJustification" 
+                        rows="3" 
+                        formControlName="businessJustification"
+                        placeholder="Explain the business need and expected benefits"
+                        [class.is-invalid]="isFieldInvalid('businessJustification')"></textarea>
+              <div class="invalid-feedback">{{ getFieldError('businessJustification') }}</div>
+            </div>
+
+            <div class="row">
+              <!-- Estimated Users -->
+              <div class="col-md-4 mb-3">
+                <label for="estimatedUsers" class="form-label">
+                  <i class="bi bi-people me-1"></i>Estimated Users *
+                </label>
+                <input type="number" 
+                       class="form-control" 
+                       id="estimatedUsers" 
+                       formControlName="estimatedUsers"
+                       placeholder="Number of users"
+                       min="1"
+                       [class.is-invalid]="isFieldInvalid('estimatedUsers')">
+                <div class="invalid-feedback">{{ getFieldError('estimatedUsers') }}</div>
+              </div>
+
+              <!-- Budget -->
+              <div class="col-md-4 mb-3">
+                <label for="budget" class="form-label">
+                  <i class="bi bi-currency-dollar me-1"></i>Monthly Budget (USD) *
+                </label>
+                <input type="number" 
+                       class="form-control" 
+                       id="budget" 
+                       formControlName="budget"
+                       placeholder="0.00"
+                       min="0"
+                       step="0.01"
+                       [class.is-invalid]="isFieldInvalid('budget')">
+                <div class="invalid-feedback">{{ getFieldError('budget') }}</div>
+              </div>
+
+              <!-- Required By -->
+              <div class="col-md-4 mb-3">
+                <label for="requiredBy" class="form-label">
+                  <i class="bi bi-calendar me-1"></i>Required By *
+                </label>
+                <input type="date" 
+                       class="form-control" 
+                       id="requiredBy" 
+                       formControlName="requiredBy"
+                       [class.is-invalid]="isFieldInvalid('requiredBy')">
+                <div class="invalid-feedback">{{ getFieldError('requiredBy') }}</div>
+              </div>
+            </div>
+
+            <div class="row">
+              <!-- Contact Email -->
+              <div class="col-md-6 mb-3">
+                <label for="contactEmail" class="form-label">
+                  <i class="bi bi-envelope me-1"></i>Contact Email *
+                </label>
+                <input type="email" 
+                       class="form-control" 
+                       id="contactEmail" 
+                       formControlName="contactEmail"
+                       placeholder="your.email@company.com"
+                       [class.is-invalid]="isFieldInvalid('contactEmail')">
+                <div class="invalid-feedback">{{ getFieldError('contactEmail') }}</div>
+              </div>
+
+              <!-- Department -->
+              <div class="col-md-6 mb-3">
+                <label for="department" class="form-label">
+                  <i class="bi bi-building me-1"></i>Department *
+                </label>
+                <input type="text" 
+                       class="form-control" 
+                       id="department" 
+                       formControlName="department"
+                       placeholder="Engineering, Marketing, Sales, etc."
+                       [class.is-invalid]="isFieldInvalid('department')">
+                <div class="invalid-feedback">{{ getFieldError('department') }}</div>
+              </div>
+            </div>
+
+            <!-- Technical Requirements -->
+            <div class="mb-3">
+              <label for="technicalRequirements" class="form-label">
+                <i class="bi bi-cpu me-1"></i>Technical Requirements
+              </label>
+              <textarea class="form-control" 
+                        id="technicalRequirements" 
+                        rows="3" 
+                        formControlName="technicalRequirements"
+                        placeholder="Specific technical requirements, configurations, or constraints (optional)"></textarea>
+            </div>
+
+            <!-- Compliance Requirements -->
+            <div class="mb-4">
+              <label for="complianceRequirements" class="form-label">
+                <i class="bi bi-shield-check me-1"></i>Compliance Requirements
+              </label>
+              <textarea class="form-control" 
+                        id="complianceRequirements" 
+                        rows="2" 
+                        formControlName="complianceRequirements"
+                        placeholder="Any compliance requirements (GDPR, HIPAA, SOC2, etc.) - optional"></textarea>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="d-flex justify-content-between align-items-center">
+              <div class="text-muted">
+                <small><i class="bi bi-info-circle me-1"></i>Fields marked with * are required</small>
+              </div>
+              <div>
+                <button type="button" 
+                        class="btn btn-outline-secondary me-2"
+                        (click)="requestForm.reset(); initializeForm()">
+                  <i class="bi bi-arrow-clockwise me-1"></i>Reset Form
+                </button>
+                <button type="submit" 
+                        class="btn btn-primary"
+                        [disabled]="isSubmitting || requestForm.invalid">
+                  <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm me-2" role="status"></span>
+                  <i *ngIf="!isSubmitting" class="bi bi-send me-1"></i>
+                  {{ isSubmitting ? 'Submitting...' : 'Submit Request' }}
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Help Section -->
+      <div class="card mt-4 border-info">
+        <div class="card-header bg-info text-white">
+          <h5 class="mb-0">
+            <i class="bi bi-question-circle me-2"></i>Need Help?
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-4">
+              <h6><i class="bi bi-clock me-1"></i>Processing Time</h6>
+              <p class="text-muted small">Most requests are processed within 2-5 business days depending on complexity and approval requirements.</p>
+            </div>
+            <div class="col-md-4">
+              <h6><i class="bi bi-person-check me-1"></i>Approval Process</h6>
+              <p class="text-muted small">Requests are reviewed by your department head and IT security team before provisioning.</p>
+            </div>
+            <div class="col-md-4">
+              <h6><i class="bi bi-telephone me-1"></i>Support</h6>
+              <p class="text-muted small">For urgent requests or questions, contact IT Support at <strong>support&#64;company.com</strong></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
