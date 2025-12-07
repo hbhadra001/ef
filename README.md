@@ -1,149 +1,33 @@
-Below is the **updated, Security-team–ready explanation**, now fully aligned with the **attached “Decentralized Ingress Traffic DMZ” diagram** from ARC Template v2.0.
-
-You can paste this directly into Confluence, your ARC packet, or email.
-
----
-
-# **Why Static IP Addresses Cannot Be Provided for Our External Landing Zone**
-
-### *Updated Based on “Decentralized Ingress Traffic DMZ” Architecture Diagram*
-
-## **1. Context**
-
-Our external-facing application is onboarded into the CFS 2.0 model, where all internet-bound ingress traffic follows the **standard enterprise ingress security stack** shown in the diagram:
-
-**Internet → Neustar External DNS → Akamai (DDoS + WAF) → Internet Gateway → GWLB → Outer Perimeter Firewall → Customer External Application VPC → Transit Gateway → Internal Zones (optional)**
-
-Because traffic is routed through these shared enterprise controls, the IPs reaching our application **belong to the Akamai edge network**, not to a static range we control.
+Below is a **clean, enterprise-ready tabular mapping** of **Self-Serve Web Portal Functional Capabilities** and the **aligned requirements** for each capability.
+This fits perfectly into your ARC documents, Confluence pages, and architecture review decks.
 
 ---
 
-## **2. Key Reason Static IPs Cannot Be Provided**
+# **Self-Serve Web Portal — Functional Capabilities & Requirements**
 
-### **2.1 Akamai Edge Nodes Terminate Traffic**
-
-The diagram shows:
-
-* **Neustar External DNS** resolving the hostname
-* **Akamai** providing **DDoS, WAF, and global edge protection** BEFORE traffic reaches our AWS infrastructure
-* Our VPCs only receive traffic **after** it is processed by Akamai and the enterprise DMZ stack
-
-This means:
-
-> **Traffic entering our AWS VPC does not originate from a fixed IP range—it originates from Akamai’s globally distributed and dynamically shifting edge POPs.**
-
----
-
-## **2.2 Akamai Does Not Support Customer-Owned Static IPs**
-
-Akamai’s edge network:
-
-* Is globally Anycast
-* Has hundreds of IPs per region
-* Continuously rotates IPs for DDoS absorption
-* Performs routing optimization based on load and proximity
-* Uses dynamic pools for WAF and rate-limiting engines
-
-Therefore:
-
-> **There is no single IP or CIDR block that we can provide or guarantee. Attempting to do so would break customer access and violate enterprise ingress architecture.**
-
----
-
-## **2.3 The External Landing Zone *Must* Route Through the Enterprise DMZ**
-
-Per the diagram:
-
-* All customer-facing applications **must** onboard through the **Customer External Application VPCs** using the **Outer Perimeter Firewall**, **GWLB**, and **Akamai**.
-* This is a **mandatory enterprise control**, not optional.
-* Direct exposure to AWS public IPs is **prohibited**.
-
-Allow-listing static IPs would bypass:
-
-* Akamai DDoS
-* Akamai WAF
-* Outer Perimeter Firewall
-* Standard Inspection Controls
-
-Thus:
-
-> **Static IP allow-listing is not architecturally supported nor allowed under CFS 2.0 external DMZ standards.**
-
----
-
-## **3. Approved Compensating Security Controls Already Protecting the Application**
-
-### **Akamai (as shown in the diagram)**
-
-* DDoS absorption at the edge
-* Web Application Firewall (OWASP Top 10)
-* Bot mitigation
-* Client reputation filtering
-* TLS termination
-* Edge rate limiting
-
-### **Neustar External DNS**
-
-* DNS DDoS protection
-* DNSSEC
-* Enterprise aliasing of customer endpoints
-
-### **Outer Perimeter Firewall (GWLB)**
-
-* Packet inspection
-* Rule-based filtering
-* Intrusion prevention
-
-### **AWS Application Load Balancer + Security Groups**
-
-* Origin-level protection
-* Path-based routing
-* Traffic segmentation inside CFS 2.0
-
-In short:
-
-> **The system is protected by multiple layers of enterprise-mandated controls that are stronger and more adaptive than static IP allow-listing.**
-
----
-
-## **4. Acceptable Security Enhancements (If Required)**
-
-Instead of static IP allow-listing, we can implement:
-
-### **Option A — Akamai Access Control Lists**
-
-* IP allow/deny lists at the edge
-* Geo-blocking
-* URL-level firewall rules
-
-### **Option B — Mutual TLS at the Origin**
-
-* Only Akamai certificates allowed
-* Prevents any direct internet access
-
-### **Option C — Token-Based Authentication**
-
-* JWT validation
-* HMAC signatures
-* Signed URLs
-* API Gateway Authorizer (if applicable)
-
-### **Option D — Zero-Trust Patterns**
-
-* Okta integration
-* Private API access
-* Session-based access control
-
----
-
-## **5. Final Summary (Attach to Your ARC Review)**
-
-**“We cannot provide static IP addresses because all inbound traffic is routed through Neustar External DNS and Akamai’s globally distributed DDoS/WAF edge network as mandated by the CFS 2.0 decentralized ingress model. Akamai uses dynamic IP pools that constantly change for resiliency and performance, and exposing static IPs would require bypassing enterprise security (Akamai, GWLB, Outer Perimeter Firewall), which is not allowed. The current architecture already provides stronger protection than static IP allow-listing.”**
-
----
-
-## **6. One-Sentence Version (for email/Slack)**
-
-> **Because our external landing zone is fronted by Neustar DNS and Akamai (per the CFS 2.0 DMZ architecture), we cannot provide static IPs—Akamai uses dynamic global edge IPs and is the mandatory DDoS/WAF control for all external-access applications.**
+| **#**  | **Functional Capability**                                 | **Description**                                                                      | **Aligned Requirements**                                                                                                                                                                                                                                                                 |
+| ------ | --------------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1**  | **User Authentication & SSO**                             | Portal allows users to securely log in using corporate identity.                     | - Okta SSO integration (OIDC)<br>- MFA support<br>- Role-based access control (RBAC)<br>- Session timeout & token refresh<br>- Audit logging of login events                                                                                                                             |
+| **2**  | **Customer Onboarding Workflow**                          | Users can request onboarding for file transfer, create configs, and track approvals. | - JSON-based configuration form<br>- Validation of required fields (source, target, PII flags, frequency, env selection)<br>- Predefined workflow templates (5 workflows)<br>- Approval workflow integration (ServiceNow or internal workflow)<br>- Step Functions orchestration trigger |
+| **3**  | **Self-Serve File Transfer Configuration**                | Create, update, and delete transfer workflows for SFTP↔S3, S3↔S3, etc.               | - Select source/target types<br>- Upload or link JSON configuration<br>- Real-time validation<br>- Ability to save draft & submit<br>- Automated Terraform pipeline trigger                                                                                                              |
+| **4**  | **Environment Selection (DEV / TEST / PROD)**             | User chooses which environment to deploy configuration into.                         | - Enforce environment-specific guardrails<br>- “Promotion” workflow between environments<br>- Environment tagging<br>- Cost visibility (optional)                                                                                                                                        |
+| **5**  | **Job Deployment to Step Functions / Backend Automation** | Pushes approved JSON into backend orchestrators.                                     | - API Gateway endpoint to trigger backend<br>- Integration with Step Functions<br>- EventBridge events for workflow lifecycle<br>- Error handling & rollback notifications                                                                                                               |
+| **6**  | **Workflow Status Dashboard**                             | Users see real-time status of their file transfer setups.                            | - Pull from DynamoDB or workflow metadata store<br>- Status badges (Pending, Provisioning, Active, Failed, Rollback)<br>- Search & filter by customer, partner, status<br>- Direct links to CloudWatch logs (masked)                                                                     |
+| **7**  | **File Transfer Execution Monitoring**                    | Users view whether files were successfully transferred.                              | - Real-time event polling from EventBridge or DynamoDB<br>- Success/Failure log entries<br>- File-level metadata (size, md5, timestamps)<br>- Retry/rollback indicators                                                                                                                  |
+| **8**  | **Notifications & Alerts**                                | Portal shows alerts related to onboarding, errors, approvals, or file failures.      | - In-app notifications<br>- Optional email/SNOW integration<br>- Alerts for Step Function failures<br>- SLA breach warnings                                                                                                                                                              |
+| **9**  | **Audit Trail & Compliance Logging**                      | Complete audit visibility for governance teams.                                      | - Track: who submitted, who approved, changes made, timestamps<br>- Immutable logs stored in S3 or DynamoDB<br>- Export audit logs as CSV                                                                                                                                                |
+| **10** | **Role-Based Access Control**                             | Different personas get different permissions.                                        | - Admin, Operator, Customer roles<br>- Only Admin can modify PROD<br>- Masking sensitive fields for Customer role<br>- Delegated entitlements using Okta groups                                                                                                                          |
+| **11** | **Service Catalog of Predefined Transfer Workflows**      | Users browse available workflows before choosing one.                                | - Display 5 predefined workflows<br>- For each workflow: description, inputs required, backend components<br>- Versioning of workflow definitions                                                                                                                                        |
+| **12** | **API Integration Layer (API Gateway)**                   | Web portal calls backend through secure APIs.                                        | - REST endpoints for onboarding, validation, status, logs<br>- JWT validation via Okta<br>- Throttling, rate limiting<br>- Retry policies & circuit breaker patterns                                                                                                                     |
+| **13** | **Template Management & Versioning**                      | Portal stores common JSON templates.                                                 | - Version-controlled template library<br>- Upload new schema version<br>- Backward compatibility checks                                                                                                                                                                                  |
+| **14** | **Rollback & Recovery Actions**                           | Self-service rollback for failed deployments.                                        | - Trigger rollback Lambda<br>- Show rollback history<br>- Prevent rollback on PROD without approval                                                                                                                                                                                      |
+| **15** | **Audit-Friendly Reporting & Export**                     | Built-in reporting for ARC/security.                                                 | - Export onboarding history<br>- Export workflow activity logs<br>- SLA reports<br>- Cost estimation report                                                                                                                                                                              |
+| **16** | **Integration with ServiceNow (Optional Front Door)**     | Request can originate in SN and redirect to Portal.                                  | - ServiceNow Catalog Item<br>- Redirect with user context token<br>- SN → Portal → API Gateway event pipeline                                                                                                                                                                            |
+| **17** | **Admin Console**                                         | Backend teams manage accounts, templates, approvals.                                 | - Edit workflow schemas<br>- Override requests<br>- Manual provisioning or force-retry<br>- Bulk operations                                                                                                                                                                              |
+| **18** | **Metrics & SLA Dashboard**                               | Shows uptime, latency, transfer success rate.                                        | - Integration with CloudWatch Metrics<br>- SLA monitoring per partner<br>- Transfer failure trends                                                                                                                                                                                       |
+| **19** | **Secure Storage of JSON & Metadata**                     | All customer configs stored safely.                                                  | - S3 encryption at rest (SSE-KMS)<br>- Fine-grained IAM<br>- Versioning enabled<br>- Automatic backup & DR                                                                                                                                                                               |
+| **20** | **Multi-Region DR Support**                               | For Active-Active or failover scenarios.                                             | - Region-aware configurations<br>- Replicated metadata & logs<br>- Automatic failover routing using Route53                                                                                                                                                                              |
 
 
+
+Just tell me what you want next.
