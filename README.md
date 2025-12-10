@@ -1,33 +1,208 @@
-Below is a **clean, enterprise-ready tabular mapping** of **Self-Serve Web Portal Functional Capabilities** and the **aligned requirements** for each capability.
-This fits perfectly into your ARC documents, Confluence pages, and architecture review decks.
+Below is a **clear, compelling “story-style” explanation** you can present to the **Security Team, ARC reviewers, or Leadership**.
+It explains **what happens if an attacker bypasses any part of the Neustar → Akamai → DMZ Firewall → Core Firewall** chain, mapped to **severity levels**, and uses **realistic breach scenarios**.
+
+You can also drop this directly into **Confluence / ARC Pre-Read**.
 
 ---
 
-# **Self-Serve Web Portal — Functional Capabilities & Requirements**
+# **Breach Impact Story: What Happens if a Threat Actor Bypasses the Ingress Security Stack**
 
-| **#**  | **Functional Capability**                                 | **Description**                                                                      | **Aligned Requirements**                                                                                                                                                                                                                                                                 |
-| ------ | --------------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **1**  | **User Authentication & SSO**                             | Portal allows users to securely log in using corporate identity.                     | - Okta SSO integration (OIDC)<br>- MFA support<br>- Role-based access control (RBAC)<br>- Session timeout & token refresh<br>- Audit logging of login events                                                                                                                             |
-| **2**  | **Customer Onboarding Workflow**                          | Users can request onboarding for file transfer, create configs, and track approvals. | - JSON-based configuration form<br>- Validation of required fields (source, target, PII flags, frequency, env selection)<br>- Predefined workflow templates (5 workflows)<br>- Approval workflow integration (ServiceNow or internal workflow)<br>- Step Functions orchestration trigger |
-| **3**  | **Self-Serve File Transfer Configuration**                | Create, update, and delete transfer workflows for SFTP↔S3, S3↔S3, etc.               | - Select source/target types<br>- Upload or link JSON configuration<br>- Real-time validation<br>- Ability to save draft & submit<br>- Automated Terraform pipeline trigger                                                                                                              |
-| **4**  | **Environment Selection (DEV / TEST / PROD)**             | User chooses which environment to deploy configuration into.                         | - Enforce environment-specific guardrails<br>- “Promotion” workflow between environments<br>- Environment tagging<br>- Cost visibility (optional)                                                                                                                                        |
-| **5**  | **Job Deployment to Step Functions / Backend Automation** | Pushes approved JSON into backend orchestrators.                                     | - API Gateway endpoint to trigger backend<br>- Integration with Step Functions<br>- EventBridge events for workflow lifecycle<br>- Error handling & rollback notifications                                                                                                               |
-| **6**  | **Workflow Status Dashboard**                             | Users see real-time status of their file transfer setups.                            | - Pull from DynamoDB or workflow metadata store<br>- Status badges (Pending, Provisioning, Active, Failed, Rollback)<br>- Search & filter by customer, partner, status<br>- Direct links to CloudWatch logs (masked)                                                                     |
-| **7**  | **File Transfer Execution Monitoring**                    | Users view whether files were successfully transferred.                              | - Real-time event polling from EventBridge or DynamoDB<br>- Success/Failure log entries<br>- File-level metadata (size, md5, timestamps)<br>- Retry/rollback indicators                                                                                                                  |
-| **8**  | **Notifications & Alerts**                                | Portal shows alerts related to onboarding, errors, approvals, or file failures.      | - In-app notifications<br>- Optional email/SNOW integration<br>- Alerts for Step Function failures<br>- SLA breach warnings                                                                                                                                                              |
-| **9**  | **Audit Trail & Compliance Logging**                      | Complete audit visibility for governance teams.                                      | - Track: who submitted, who approved, changes made, timestamps<br>- Immutable logs stored in S3 or DynamoDB<br>- Export audit logs as CSV                                                                                                                                                |
-| **10** | **Role-Based Access Control**                             | Different personas get different permissions.                                        | - Admin, Operator, Customer roles<br>- Only Admin can modify PROD<br>- Masking sensitive fields for Customer role<br>- Delegated entitlements using Okta groups                                                                                                                          |
-| **11** | **Service Catalog of Predefined Transfer Workflows**      | Users browse available workflows before choosing one.                                | - Display 5 predefined workflows<br>- For each workflow: description, inputs required, backend components<br>- Versioning of workflow definitions                                                                                                                                        |
-| **12** | **API Integration Layer (API Gateway)**                   | Web portal calls backend through secure APIs.                                        | - REST endpoints for onboarding, validation, status, logs<br>- JWT validation via Okta<br>- Throttling, rate limiting<br>- Retry policies & circuit breaker patterns                                                                                                                     |
-| **13** | **Template Management & Versioning**                      | Portal stores common JSON templates.                                                 | - Version-controlled template library<br>- Upload new schema version<br>- Backward compatibility checks                                                                                                                                                                                  |
-| **14** | **Rollback & Recovery Actions**                           | Self-service rollback for failed deployments.                                        | - Trigger rollback Lambda<br>- Show rollback history<br>- Prevent rollback on PROD without approval                                                                                                                                                                                      |
-| **15** | **Audit-Friendly Reporting & Export**                     | Built-in reporting for ARC/security.                                                 | - Export onboarding history<br>- Export workflow activity logs<br>- SLA reports<br>- Cost estimation report                                                                                                                                                                              |
-| **16** | **Integration with ServiceNow (Optional Front Door)**     | Request can originate in SN and redirect to Portal.                                  | - ServiceNow Catalog Item<br>- Redirect with user context token<br>- SN → Portal → API Gateway event pipeline                                                                                                                                                                            |
-| **17** | **Admin Console**                                         | Backend teams manage accounts, templates, approvals.                                 | - Edit workflow schemas<br>- Override requests<br>- Manual provisioning or force-retry<br>- Bulk operations                                                                                                                                                                              |
-| **18** | **Metrics & SLA Dashboard**                               | Shows uptime, latency, transfer success rate.                                        | - Integration with CloudWatch Metrics<br>- SLA monitoring per partner<br>- Transfer failure trends                                                                                                                                                                                       |
-| **19** | **Secure Storage of JSON & Metadata**                     | All customer configs stored safely.                                                  | - S3 encryption at rest (SSE-KMS)<br>- Fine-grained IAM<br>- Versioning enabled<br>- Automatic backup & DR                                                                                                                                                                               |
-| **20** | **Multi-Region DR Support**                               | For Active-Active or failover scenarios.                                             | - Region-aware configurations<br>- Replicated metadata & logs<br>- Automatic failover routing using Route53                                                                                                                                                                              |
+### *Aligned with the Neustar → Akamai → DMZ Firewall → Core Firewall Architecture*
+
+---
+
+# **1. Context: Our Multi-Layer Defense**
+
+Our ingress traffic is protected by four mandatory layers:
+
+1. **Neustar DNS** – prevents DNS-based attacks, spoofing, domain hijacking
+2. **Akamai Edge (DDoS, WAF, CDN)** – absorbs global-scale threats and blocks malicious clients
+3. **DMZ Firewall VPC (GWLB)** – packet inspection, IDS/IPS, threat signatures
+4. **Core Firewall VPC** – protects internal workloads and AWS VPCs
+5. **Customer VPC Security Groups, Load Balancers** – final layer
+
+If any layer is bypassed or compromised, the consequences escalate sharply.
+
+---
+
+# **2. Breach Scenario Story (Use in ARC or Security Review)**
+
+### **“Imagine a threat actor is attempting to breach our environment.”**
+
+They begin scanning the internet and find our domain—however, **Neustar** immediately protects against DNS poisoning and spoofing.
+Frustrated, the attacker attempts direct TCP connections to the service.
+
+But the traffic never reaches us—it is absorbed at **Akamai**, where:
+
+* DDoS floods are dropped
+* Malicious requests never reach AWS
+* Bot signatures, SQL injection, XSS, log4shell payloads are filtered
+
+Suppose somehow a vulnerability is found and the attacker manages to slip past Akamai.
+This attacker now interacts with the **DMZ Firewall VPC**, where:
+
+* IDS signatures
+* ML-based anomaly detection
+* Known attacker IP blocks
+* Threat intelligence feeds
+
+stop 99% of remaining threats.
+
+But what if—against all odds—they bypass the DMZ firewall?
+
+Now they reach the **Core Firewall**, the final protective barrier before any internal application or customer VPC.
+At this point, the attacker can potentially probe:
+
+* Internal APIs
+* Load balancers
+* Metadata or misconfigured routes
+* Lateral movement paths
+
+This represents the **highest severity breach scenario**.
+
+The impact escalates exponentially the further the attacker gets.
+
+---
+
+# **3. Consequence Levels (Severity Mapping)**
+
+Below is a structured, severity-based interpretation of the same story, which Security teams expect.
+
+---
+
+## **Severity 4 (Low): Perimeter Harassment Attempts**
+
+⛔ Attackers hit Neustar or Akamai but do **not** penetrate
+✔ Expected daily activity
+✔ No customer impact
+✔ No infrastructure impact
+
+Examples:
+
+* DNS reflection attacks
+* Low-volume bot traffic
+* Script kiddie probing
+* Basic DDoS attempts
+
+**Outcome:**
+Blocked automatically. Logged. No escalation.
+
+---
+
+## **Severity 3 (Moderate): Akamai Edge Filtering Bypassed**
+
+⛔ Attacker bypasses WAF/DDoS controls
+⚠ Now traffic reaches **DMZ Firewall**
+
+Examples:
+
+* Polymorphic malware
+* Zero-day web exploit bypassing known signatures
+* Sophisticated botnet traffic
+* High-volume DDoS partially absorbed
+
+**Outcome:**
+DMZ firewall blocks or rate-limits; Security is alerted.
+Limited blast radius, but requires attention.
+
+---
+
+## **Severity 2 (High): DMZ Firewall Compromised or Evaded**
+
+⛔ Attacker reaches the **Customer DMZ VPC**
+⚠ Can probe outer AWS infrastructure
+
+Examples:
+
+* Complex evasion techniques
+* L7 bypass attacks (header spoofing, fragmentation)
+* Abuse of an outdated DMZ firewall rule
+* Compromised Akamai → AWS origin pipeline (rare)
+
+**Potential Impact:**
+
+* Exposure of app endpoints
+* Reconnaissance of AWS ingress
+* Attempts at privilege escalation
+* Testing for misconfigured NACLs or SGs
+
+**Outcome:**
+High-severity incident. SOC must investigate. Root cause analysis required.
+
+---
+
+## **Severity 1 (Critical): Core Firewall Bypassed → Direct VPC Exposure**
+
+🚨 **This is the catastrophic breach scenario.**
+
+If the attacker reaches the **Core Firewall VPC** or beyond:
+
+### **Potential Consequences:**
+
+* Access to internal APIs or microservices
+* Credential harvesting from misconfigured endpoints
+* East-west lateral movement
+* Access to internal sensitive workloads
+* Data exfiltration (PII/PCI/financial data)
+* Ability to pivot into internal corporate networks
+* Compromise of customer environments
+
+### **Blast Radius:**
+
+**Organization-wide. Regulatory. Reportable.**
+(FFIEC, NCUA, NIST CSF, Fed-level reporting)
+
+### **Outcome:**
+
+* Enterprise Incident Bridge opened
+* Mandatory reporting to Internal Audit / Cyber Teams
+* Possible service shutdown
+* Mandatory forensics
+* Review by ARC, Risk, and Compliance
+* Customer notification depending on impact
+
+---
+
+# **4. Why This Matters in the Static IP Allow-List Discussion**
+
+If we bypass **any** of the four layers above by exposing a **static IP**:
+
+* Akamai protection is removed
+* DMZ firewall filtering is removed
+* Core firewall receives direct internet traffic
+* Vulnerability footprint increases exponentially
+
+**A single static IP exposure potentially escalates threat level from Severity 4 → Severity 1.**
+
+This is why ARC does **not** allow applications to expose static IP origins for public access.
+
+---
+
+# **5. Final Executive-Level Summary**
+
+> **If an attacker bypasses the multi-layered Neustar → Akamai → DMZ Firewall → Core Firewall path, the organization faces escalating consequences—from harmless probing (Severity 4) to catastrophic enterprise compromise and data exfiltration (Severity 1). Exposing static IPs bypasses these mandated layers and directly increases breach severity and blast radius.**
+
+Here is a clean, **Security-team–ready table** showing **Consequences vs. Severity Levels** based on the Neustar → Akamai → DMZ Firewall → Core Firewall ingress model.
+
+You can paste this directly into **Confluence, ARC template, or Security Review**.
+
+---
+
+# **Breach Consequences & Severity Levels**
+
+| **Severity Level**        | **What the Attacker Bypasses**                               | **Description of Breach Scenario**                                            | **Consequences**                                                                                                                                 | **Business / Security Impact**                                                                                                                   |
+| ------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Severity 4 – Low**      | *No layers bypassed*<br>Attacker hits Neustar or Akamai only | Routine internet noise (bots, scanners, low-volume DDoS) blocked at the edge  | • No application impact<br>• All traffic dropped before AWS<br>• Logged and monitored                                                            | **No customer impact**<br>**No escalation required**<br>Handled by standard Akamai/Neustar protections                                           |
+| **Severity 3 – Moderate** | **Akamai bypassed** but **DMZ Firewall blocks**              | Sophisticated requests bypass WAF rules, malformed payloads, evasion attempts | • DMZ Firewall absorbs the attack<br>• Increased alerting/noise<br>• Potential partial service degradation if attack is large                    | **Moderate risk**<br>Security review needed<br>Possible rule tuning required                                                                     |
+| **Severity 2 – High**     | **DMZ Firewall bypassed** (traffic reaches Customer DMZ VPC) | Attacker can probe AWS-facing ingress points, ALBs, IGWs, misconfigurations   | • Exposure of outer AWS surfaces<br>• Possible reconnaissance of application endpoints<br>• Increased likelihood of exploiting misconfigurations | **High severity incident**<br>Requires SOC activation<br>Root cause analysis + mitigation required                                               |
+| **Severity 1 – Critical** | **Core Firewall bypassed → Direct access to internal VPC**   | Attacker reaches internal workloads or services inside AWS                    | • Potential access to internal APIs or data stores<br>• Credential harvesting<br>• Lateral movement<br>• Data exfiltration (PII/PCI/Financial)   | **Catastrophic breach**<br>Mandatory reporting<br>Legal & regulatory exposure<br>Potential service shutdown<br>Executive-level incident response |
+
+---
+
+# **Summary for Leadership (Optional to Include Below Table)**
+
+> **As an attacker bypasses each layer (Akamai → DMZ Firewall → Core Firewall), the consequences escalate from routine blocked noise (Severity 4) to a full-scale compromise of internal systems and data (Severity 1). Allow-listing static IPs would remove key protections and dramatically increase the likelihood of a Severity 1 breach.**
 
 
 
-Just tell me what you want next.
+<img width="2385" height="1446" alt="attack_path_severity" src="https://github.com/user-attachments/assets/102fad1b-1e54-42d0-a76a-40d6e1a33dad" />
