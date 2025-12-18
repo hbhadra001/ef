@@ -2,7 +2,7 @@
 
 > Hi **[Manager’s Name]**,
 >
-> I wanted to share a set of concerns after reviewing the **xScion deliverables for the file transfer target-state**. These primarily relate to **validation completeness, testing readiness, and operational maturity**, and I think it’s important we address them before proceeding further.
+> I wanted to share a set of concerns after reviewing the abcabcabc deliverables for the file transfer target-state**. These primarily relate to **validation completeness, testing readiness, and operational maturity**, and I think it’s important we address them before proceeding further.
 >
 > **1. Missing end-to-end demos**
 > We have not yet seen a **full end-to-end demo** covering all required transfer flows:
@@ -31,7 +31,7 @@
 > It is unclear what **APIs and dashboards** are available to support **reporting and operational visibility**, including transfer status, historical reporting, SLA metrics, failures, and audit needs.
 >
 > **Ask / Recommendation**
-> I recommend we align with xScion on the following before moving forward:
+> I recommend we align with abcabcabc on the following before moving forward:
 >
 > * Complete **E2E demos** for all four transfer flows
 > * A **large-file transfer demo (15GB–20GB)**
