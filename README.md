@@ -1,312 +1,146 @@
+Below is a **customer-friendly field guide** (simple wording) in **tabular format**, aligned to your workbook where each workflow sheet has:
 
-# 🧩 EPIC 1: Automated File Transfer Testing Framework (E2E)
-
-**Epic Description**
-Design and implement a production-grade automated testing framework to validate SFTP ↔ S3 and S3 ↔ S3 file transfer flows using synthetic test data, real endpoints, observability, and alerting.
+**Workflow Metadata → Customer → Network & Boundaries → Source → Target → Security → Ops**
 
 ---
 
-## 📘 EPIC 1.1: Architecture & Design
+## 1) Workflow Metadata (top of each workflow tab)
 
-### **Story 1: Architecture design for file transfer testing framework**
-
-**Points:** 2
-**Description:**
-Design the end-to-end testing framework architecture using AWS EventBridge, Step Functions, Lambda, S3, CloudWatch, and Secrets Manager.
-Include flow diagrams, component responsibilities, and failure handling.
-
-**Acceptance Criteria**
-
-* Architecture diagram created
-* Control flow documented (happy + failure paths)
-* Reviewed with Source team architect
+| Field                       | What customer should enter                                                | Example                  |
+| --------------------------- | ------------------------------------------------------------------------- | ------------------------ |
+| Workflow ID                 | A unique name for this transfer (don’t reuse for other flows)             | `wf-acme-settlement-001` |
+| Flow Type                   | Choose the workflow type                                                  | `SFTP_to_S3`             |
+| Environment (Dev/Test/Prod) | Where this will run                                                       | `Test`                   |
+| Enabled (Yes/No)            | Keep `No` until everything is filled; set `Yes` only when ready to submit | `No`                     |
 
 ---
 
-### **Story 2: Define JSON-based test configuration contract**
+## 2) Customer
 
-**Points:** 1
-**Description:**
-Define the standard JSON schema for test flow definitions (source, target, validation, test data).
-
-**Acceptance Criteria**
-
-* JSON schema documented
-* Supports SFTP↔SFTP, SFTP↔S3, S3↔S3
-* Versioned schema (`schema_ver`)
-
----
-
-## 🏗 EPIC 1.2: Infrastructure (Terraform)
-
-### **Story 3: Provision S3 config & results storage**
-
-**Points:** 1
-**Description:**
-Create versioned S3 bucket for test configs and results with lifecycle rules.
-
-**Acceptance Criteria**
-
-* `config/flows/` and `results/` structure created
-* Versioning enabled
-* Results lifecycle (30 days) applied
+| Field                    | What customer should enter             | Example             |
+| ------------------------ | -------------------------------------- | ------------------- |
+| Customer ID (Short Code) | Short identifier (no spaces)           | `ACME`              |
+| Customer Name            | Full company name                      | `Acme Retail Inc.`  |
+| Business Unit / LOB      | Team/department that owns this         | `Payments Ops`      |
+| AWS Account ID           | 12-digit AWS account (target side)     | `123456789012`      |
+| AWS Region               | AWS region for processing/storage      | `us-west-2`         |
+| Primary Contact Email    | Best email/distro for onboarding + ops | `acme-ops@acme.com` |
 
 ---
 
-### **Story 4: Create IAM roles with least privilege**
+## 3) Network & Boundaries (new section)
 
-**Points:** 2
-**Description:**
-Define IAM roles/policies for test Lambdas with restricted access to S3 prefixes, Secrets Manager, CloudWatch.
+| Field                       | What customer should enter                               | Example                                  |
+| --------------------------- | -------------------------------------------------------- | ---------------------------------------- |
+| Source Endpoint Location    | Where the source lives                                   | `External`                               |
+| Target Endpoint Location    | Where the target lives                                   | `Internal`                               |
+| Source Network Zone         | Source network zone                                      | `Internet` / `Partner Network`           |
+| Target Network Zone         | Target network zone                                      | `Cloud VPC`                              |
+| Connectivity Path           | How we connect                                           | `Public Internet (allowlist + key auth)` |
+| Allowlisting Responsibility | Who must allowlist IPs                                   | `Customer must allowlist our IPs`        |
+| Data Classification         | Sensitivity of files                                     | `Confidential`                           |
+| Boundary Crossing (Yes/No)  | Does traffic cross boundaries (e.g., external→internal)? | `Yes`                                    |
+| From Boundary               | If Boundary Crossing = Yes, origin boundary              | `External`                               |
+| To Boundary                 | If Boundary Crossing = Yes, destination boundary         | `Internal`                               |
 
-**Acceptance Criteria**
-
-* No wildcard S3 access in prod
-* Secrets Manager access scoped
-* IAM reviewed by security
-
----
-
-### **Story 5: Provision Step Functions state machine**
-
-**Points:** 2
-**Description:**
-Create Step Functions workflow orchestrating test execution for each flow.
-
-**Acceptance Criteria**
-
-* Map state supports parallel flows
-* Configurable concurrency
-* Logs enabled
+**Important:** If Connectivity Path is **Public Internet**, customers must fill **Allowlisting Responsibility** (and SFTP allowlist IPs below).
 
 ---
 
-### **Story 6: Configure EventBridge daily schedule**
+## 4) Source (SFTP) — for SFTP_to_S3 and SFTP_to_SFTP
 
-**Points:** 1
-**Description:**
-Trigger test execution daily via EventBridge cron rule.
-
-**Acceptance Criteria**
-
-* Default schedule documented
-* Manual execution still supported
-
----
-
-## ⚙️ EPIC 1.3: Lambda Implementation (Core Testing)
-
-### **Story 7: Implement List Configs Lambda**
-
-**Points:** 1
-**Description:**
-Lambda to read enabled test configs from S3.
-
-**Acceptance Criteria**
-
-* Reads JSON configs
-* Skips disabled flows
-* Handles pagination
+| Field                            | What customer should enter                           | Example               |
+| -------------------------------- | ---------------------------------------------------- | --------------------- |
+| Source SFTP Hostname             | DNS name or IP of source SFTP                        | `sftp.partner.com`    |
+| Source SFTP Port                 | Usually 22                                           | `22`                  |
+| Auth Type (Key/Password)         | Choose how you authenticate                          | `Key`                 |
+| SFTP Username                    | Username on SFTP server                              | `acme_inbound`        |
+| SFTP Public Key (if key-based)   | Provide SSH public key text if Auth Type = Key       | `ssh-rsa AAAA...`     |
+| Public IP(s) to Allowlist        | IPs that must be allowed on the SFTP firewall (CIDR) | `203.0.113.10/32`     |
+| Source Directory Path            | Folder to read files from                            | `/inbound/settlement` |
+| File Name Pattern                | Which files to pick (wildcards allowed)              | `settlement_*.csv`    |
+| Expected File Size Range (MB/GB) | Typical and max sizes                                | `50MB–2GB`            |
+| Transfer Frequency               | When files arrive / when to pick up                  | `Daily 02:00 PT`      |
 
 ---
 
-### **Story 8: Implement Generate Test Data Lambda**
+## 5) Source (S3) — for S3_to_SFTP and S3_to_S3
 
-**Points:** 1
-**Description:**
-Generate synthetic files with checksum and manifest metadata.
-
-**Acceptance Criteria**
-
-* Supports random & fixed patterns
-* Generates SHA256
-* Adds run_id
+| Field                        | What customer should enter | Example                     |
+| ---------------------------- | -------------------------- | --------------------------- |
+| Source S3 Bucket             | Bucket where files exist   | `acme-source-bucket`        |
+| Source S3 Prefix/Folder      | Folder path (prefix)       | `exports/daily/`            |
+| File Name Pattern            | Which files to pick        | `*.csv`                     |
+| Transfer Frequency / Trigger | Schedule or trigger style  | `Hourly` / `Daily 01:00 PT` |
 
 ---
 
-### **Story 9: Implement Seed Source Lambda**
+## 6) Target (S3) — for SFTP_to_S3 and S3_to_S3
 
-**Points:** 2
-**Description:**
-Seed synthetic file into source endpoint (S3 or SFTP).
-
-**Acceptance Criteria**
-
-* Writes data, `.sha256`, `.manifest.json`
-* Uses Secrets Manager for SFTP keys
-* Handles permission failures gracefully
+| Field                   | What customer should enter  | Example               |
+| ----------------------- | --------------------------- | --------------------- |
+| Target S3 Bucket        | Destination bucket          | `acme-landing-bucket` |
+| Target S3 Prefix/Folder | Destination folder (prefix) | `inbound/settlement/` |
+| S3 Storage Class        | Storage tier                | `STANDARD`            |
 
 ---
 
-### **Story 10: Implement Invoke Transfer Lambda**
+## 7) Target (SFTP) — for SFTP_to_SFTP and S3_to_SFTP
 
-**Points:** 1
-**Description:**
-Invoke production transfer Lambda asynchronously.
-
-**Acceptance Criteria**
-
-* Payload matches prod format
-* Invocation failures surfaced
-
----
-
-### **Story 11: Implement Poll Target Lambda**
-
-**Points:** 2
-**Description:**
-Poll target endpoint (S3 or SFTP) until file arrives or timeout.
-
-**Acceptance Criteria**
-
-* Configurable timeout
-* Backoff logic implemented
-* Clear timeout error messaging
+| Field                            | What customer should enter | Example                |
+| -------------------------------- | -------------------------- | ---------------------- |
+| Target SFTP Hostname             | Destination SFTP host      | `sftp.acme.com`        |
+| Target SFTP Port                 | Usually 22                 | `22`                   |
+| Target Auth Type (Key/Password)  | Auth method                | `Key`                  |
+| Target Username                  | Username on target SFTP    | `acme_drop`            |
+| Target Public Key (if key-based) | SSH public key if Key auth | `ssh-rsa AAAA...`      |
+| Target Directory Path            | Folder to write files      | `/dropzone/settlement` |
 
 ---
 
-### **Story 12: Implement Validation Lambda**
+## 8) S3→S3 extra fields (only for S3_to_S3)
 
-**Points:** 2
-**Description:**
-Validate file integrity at target.
-
-**Acceptance Criteria**
-
-* Size match validation
-* SHA256 validation
-* Emits CloudWatch metrics
+| Field                                    | What customer should enter               | Example        |
+| ---------------------------------------- | ---------------------------------------- | -------------- |
+| Cross-Account Copy (Yes/No)              | Is target bucket in another AWS account? | `Yes`          |
+| Target AWS Account ID (if cross-account) | Required if Cross-Account Copy = Yes     | `999988887777` |
+| Target Region (if cross-region)          | Only if target is in different region    | `us-east-1`    |
 
 ---
 
-### **Story 13: Implement Record Results Lambda**
+## 9) Security
 
-**Points:** 1
-**Description:**
-Persist test results in S3 and mark outcome.
-
-**Acceptance Criteria**
-
-* Writes run.json per execution
-* Includes failure reason
-* Results are immutable
-
----
-
-## 📊 EPIC 1.4: Observability & Alerts
-
-### **Story 14: Emit CloudWatch custom metrics**
-
-**Points:** 1
-**Description:**
-Publish per-flow RunSuccess and latency metrics.
-
-**Acceptance Criteria**
-
-* Metrics visible in CloudWatch
-* Dimensioned by FlowId
+| Field                          | What customer should enter                | Example                             |
+| ------------------------------ | ----------------------------------------- | ----------------------------------- |
+| Encryption at Rest (Yes/No)    | Should files be encrypted in storage      | `Yes`                               |
+| Encryption in Transit (Yes/No) | Should data be encrypted in transit       | `Yes`                               |
+| PGP Encryption (Yes/No)        | If files must be PGP encrypted            | `No`                                |
+| PGP Public Key (if applicable) | Required if PGP Encryption = Yes          | `-----BEGIN PGP PUBLIC KEY-----...` |
+| Checksum Validation (Yes/No)   | Validate file integrity after transfer    | `Yes`                               |
+| KMS Key ARN (if applicable)    | Only if customer-managed KMS key required | `arn:aws:kms:...`                   |
+| IAM Role Name (Execution Role) | Role used by automation to access SFTP/S3 | `acme-filetransfer-role`            |
 
 ---
 
-### **Story 15: Create CloudWatch dashboard**
+## 10) Operations
 
-**Points:** 1
-**Description:**
-Dashboard showing flow health and execution trends.
-
-**Acceptance Criteria**
-
-* RunSuccess trend per flow
-* Execution failures visible
-* Latency graph included
-
----
-
-### **Story 16: Implement webhook notifier Lambda**
-
-**Points:** 2
-**Description:**
-Notify ServiceNow/Jira/Slack on failures.
-
-**Acceptance Criteria**
-
-* Reads webhook URL from Secrets Manager
-* Triggered on SFN failures & alarms
-* Payload documented
+| Field                               | What customer should enter          | Example                         |
+| ----------------------------------- | ----------------------------------- | ------------------------------- |
+| Retry Strategy                      | None / Fixed / Exponential          | `Exponential`                   |
+| Max Retry Attempts                  | Number of retries                   | `5`                             |
+| Backoff (Fixed/Exponential)         | Retry delay strategy                | `Exponential`                   |
+| Failure Handling (Alert/Fail/Hold)  | What to do after retries fail       | `Alert`                         |
+| Notification Email(s)               | Emails for alerts                   | `ops@acme.com; oncall@acme.com` |
+| Monitoring Required (Yes/No)        | Should monitoring/alarms be enabled | `Yes`                           |
+| SLA (Hours)                         | Expected response time window       | `4`                             |
+| Support Window                      | Business hours or 24x7              | `24x7`                          |
+| Change Management Required (Yes/No) | If change approvals needed          | `Yes`                           |
+| Ticketing System                    | ServiceNow / Jira / Other           | `ServiceNow`                    |
+| Runbook Link                        | Optional link to procedure/runbook  | `https://confluence/...`        |
 
 ---
 
-## 🔐 EPIC 1.5: Security & Hardening
+If you want, I can also convert this into:
 
-### **Story 17: Secrets management & rotation strategy**
-
-**Points:** 1
-**Description:**
-Document and validate secure storage of SFTP keys and webhook secrets.
-
-**Acceptance Criteria**
-
-* Secrets Manager only
-* Rotation supported
-* No secrets in code/logs
-
----
-
-### **Story 18: Failure & blast-radius analysis**
-
-**Points:** 1
-**Description:**
-Analyze failure scenarios and ensure tests do not impact production data.
-
-**Acceptance Criteria**
-
-* Synthetic file tagging
-* Test directories isolated
-* Cleanup strategy documented
-
----
-
-## 🚀 EPIC 1.6: Enablement & Adoption
-
-### **Story 19: Create onboarding guide for new flows**
-
-**Points:** 1
-**Description:**
-Document steps to add a new flow to the test framework.
-
-**Acceptance Criteria**
-
-* JSON template provided
-* Validation checklist
-* Troubleshooting section
-
----
-
-### **Story 20: Run pilot with Source team**
-
-**Points:** 2
-**Description:**
-Enable testing for selected Source team flows and gather feedback.
-
-**Acceptance Criteria**
-
-* At least 2 real flows onboarded
-* Results reviewed with architects
-* Adjustments captured
-
----
-
-## 📐 Total Sizing Summary
-
-| Category                   | Points (Days)            |
-| -------------------------- | ------------------------ |
-| Architecture & Design      | 3                        |
-| Infrastructure (Terraform) | 6                        |
-| Core Lambdas               | 11                       |
-| Observability & Alerts     | 4                        |
-| Security & Hardening       | 2                        |
-| Adoption & Pilot           | 3                        |
-| **Total**                  | **29 points (~29 days)** |
-
-
-* Create **exec-friendly Jira Epic descriptions** for leadership review
+* a **“Help” tab inside the Excel workbook**, and/or
+* add **Required/Optional** tags per field (customer sees what’s mandatory immediately).
